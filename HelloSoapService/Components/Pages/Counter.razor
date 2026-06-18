@@ -1,0 +1,117 @@
+﻿@page "/counter"
+@rendermode InteractiveServer
+@using HelloSoapService.Services
+@inject HelloSoapService Service
+@inject HttpClient Http
+
+<PageTitle>Nachricht an Azure schicken</PageTitle>
+
+<h1>Nachricht an Azure schicken</h1>
+
+<div class="mb-3">
+    <label class="form-label">Nachricht</label>
+    <input class="form-control"
+           @bind="eingabeText"
+           @bind:event="oninput"
+           placeholder="Nachricht eingeben..." />
+</div>
+
+<button class="btn btn-primary"
+        @onclick="LoadData"
+        disabled="@string.IsNullOrWhiteSpace(eingabeText)">
+    An Azure Web-App schicken
+</button>
+
+@if (loading)
+{
+    <p>Lade Daten...</p>
+}
+else if (!string.IsNullOrWhiteSpace(message))
+{
+    <p><strong>Antwort:</strong> @message</p>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{   
+    <div class="alert alert-danger mt-3">
+        <strong>Fehler:</strong> @error
+    </div>
+}
+
+@code {
+    private string eingabeText = "";
+    private string? message;
+    private string? error;
+    private bool loading;
+
+    private async Task LoadData()
+    {
+        try
+        {
+            loading = true;
+            message = null;
+            error = null;
+
+            bool internetOk = await CheckInternetAsync();
+
+            if (!internetOk)
+            {
+                error = "FEHLER: Keine Internetverbindung vorhanden.";
+                return;
+            }
+
+            bool azureOk = await CheckAzureAsync();
+
+            if (!azureOk)
+            {
+                error = "FEHLER: Azure Web-App ist nicht erreichbar.";
+                return;
+            }
+
+            message = await Service.GetHelloMessageAsync(eingabeText);
+        }
+        catch (Exception ex)
+        {
+            error = "FEHLER: " + ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+    private async Task<bool> CheckInternetAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+            using var response = await Http.GetAsync(
+                "https://www.microsoft.com",
+                cts.Token);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task<bool> CheckAzureAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+
+            using var response = await Http.GetAsync(
+                "https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/ping",
+                cts.Token);
+
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+}
