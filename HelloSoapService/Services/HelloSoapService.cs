@@ -17,6 +17,13 @@ public class HelloSoapService
 
     public async Task<string> GetHelloMessageAsync(string messageText)
     {
+        string clientId = string.Empty;
+        string clientSecret = string.Empty;
+        string requestId = string.Empty;
+                
+        clientId = GetClientId();
+        requestId = System.Guid.NewGuid().ToString();
+
         if (string.IsNullOrWhiteSpace(messageText))
         {
             messageText = "Keine Nachricht eingegeben.";
@@ -24,11 +31,15 @@ public class HelloSoapService
 
         // fertiges SOAP XML aufbauen
         var soapXml = $@"<?xml version=""1.0""?>
-                    <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
-                        <soap:Body>
+                  <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"">
+                    <soap:Body>
+                        <Request>
+                            <ClientId>{clientId}</ClientId>
+                            <RequestId>{requestId}</RequestId>
                             <Message>{System.Security.SecurityElement.Escape(messageText)}</Message>
-                        </soap:Body>
-                    </soap:Envelope>";
+                        </Request>
+                    </soap:Body>
+                </soap:Envelope>";
 
         var content = new StringContent(
             soapXml,
@@ -48,5 +59,9 @@ public class HelloSoapService
         return xml;
     }
 
+    private string GetClientId()
+    {
+        return "CLIENT-001";
+    }
 }
 

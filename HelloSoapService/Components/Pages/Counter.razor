@@ -18,7 +18,7 @@
 
 <button class="btn btn-primary"
         @onclick="LoadData"
-        disabled="@string.IsNullOrWhiteSpace(eingabeText)">
+        disabled="@(loading || string.IsNullOrWhiteSpace(eingabeText))">
     An Azure Web-App schicken
 </button>
 
@@ -45,11 +45,19 @@ else if (!string.IsNullOrWhiteSpace(error))
 
     private async Task LoadData()
     {
+        if (loading)
+        {
+            return;
+        }
+
         try
         {
             loading = true;
             message = null;
             error = null;
+
+            var requestText = eingabeText;
+            eingabeText = string.Empty;
 
             bool internetOk = await CheckInternetAsync();
 
@@ -67,7 +75,7 @@ else if (!string.IsNullOrWhiteSpace(error))
                 return;
             }
 
-            message = await Service.GetHelloMessageAsync(eingabeText);
+            message = await Service.GetHelloMessageAsync(requestText);
         }
         catch (Exception ex)
         {
