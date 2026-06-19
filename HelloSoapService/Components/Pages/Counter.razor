@@ -3,10 +3,35 @@
 @using HelloSoapService.Services
 @inject HelloSoapService Service
 @inject HttpClient Http
+@inject ClientIdService ClientIdService
 
 <PageTitle>Nachricht an Azure schicken</PageTitle>
 
 <h1>Nachricht an Azure schicken</h1>
+
+@if (!clientChecked)
+{
+    <div class="alert alert-info">
+        Lokaler Clientdienst wird geprüft...
+    </div>
+}
+else if (!clientAllowed)
+{
+    <div class="alert alert-danger">
+        <h4>Zugriff nicht möglich</h4>
+        <p>@clientError</p>
+    </div>
+
+    return;
+}
+else
+{
+    <div class="alert alert-success">
+        ClientId erkannt: @clientId
+    </div>
+}
+
+
 
 <div class="mb-3">
     <label class="form-label">Nachricht</label>
@@ -42,6 +67,11 @@ else if (!string.IsNullOrWhiteSpace(error))
     private string? message;
     private string? error;
     private bool loading;
+
+    private string? clientId;
+    private bool clientChecked;
+    private bool clientAllowed;
+    private string? clientError;
 
     private async Task LoadData()
     {
@@ -119,6 +149,33 @@ else if (!string.IsNullOrWhiteSpace(error))
         catch
         {
             return false;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clientId = await ClientIdService.GetClientIdAsync();
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                clientAllowed = false;
+                clientError = "Keine gültige ClientId vom lokalen Dienst erhalten.";
+            }
+            else
+            {
+                clientAllowed = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            clientAllowed = false;
+            clientError = "Lokaler Clientdienst ist nicht erreichbar: " + ex.Message;
+        }
+        finally
+        {
+            clientChecked = true;
         }
     }
 

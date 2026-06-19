@@ -11,6 +11,8 @@ builder.Services.AddRazorComponents()
 // HttpClient + SOAP Service
 builder.Services.AddHttpClient<HelloSoapClient>();
 
+// Bluzor Server Side benötigt HttpClientFactory, damit HttpClient in Komponenten und Services verwendet werden kann. Daher muss HttpClient als Service registriert werden.
+builder.Services.AddHttpClient<ClientIdService>();
 
 var app = builder.Build();
 
