@@ -31,8 +31,6 @@ else
     </div>
 }
 
-
-
 <div class="mb-3">
     <label class="form-label">Nachricht</label>
     <input class="form-control"
@@ -105,7 +103,8 @@ else if (!string.IsNullOrWhiteSpace(error))
                 return;
             }
 
-            message = await Service.GetHelloMessageAsync(requestText);
+            // message = await Service.GetHelloMessageAsync(requestText);
+            message = await Service.GetHelloMessageAsync(eingabeText, clientId!);
         }
         catch (Exception ex)
         {
