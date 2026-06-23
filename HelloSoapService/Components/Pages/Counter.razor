@@ -1,9 +1,10 @@
-﻿@page "/counter"
+﻿@* @page "/counter"
 @rendermode InteractiveServer
 @using HelloSoapService.Services
 @inject HelloSoapService Service
 @inject HttpClient Http
 @inject ClientIdService ClientIdService
+@inject NavigationManager Navigation
 
 <PageTitle>Nachricht an Azure schicken</PageTitle>
 
@@ -104,7 +105,9 @@ else if (!string.IsNullOrWhiteSpace(error))
             }
 
             // message = await Service.GetHelloMessageAsync(requestText);
-            message = await Service.GetHelloMessageAsync(eingabeText, clientId!);
+            //message = await Service.GetHelloMessageAsync(eingabeText, clientId!);
+
+            message = await Service.GetHelloMessageAsync(requestText, clientId!);
         }
         catch (Exception ex)
         {
@@ -115,15 +118,14 @@ else if (!string.IsNullOrWhiteSpace(error))
             loading = false;
         }
     }
+
     private async Task<bool> CheckInternetAsync()
     {
         try
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
 
-            using var response = await Http.GetAsync(
-                "https://www.microsoft.com",
-                cts.Token);
+            using var response = await Http.GetAsync("https://www.microsoft.com", cts.Token);
 
             return response.IsSuccessStatusCode;
         }
@@ -139,9 +141,7 @@ else if (!string.IsNullOrWhiteSpace(error))
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
 
-            using var response = await Http.GetAsync(
-                "https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/ping",
-                cts.Token);
+            using var response = await Http.GetAsync("https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/ping", cts.Token);
 
             return response.IsSuccessStatusCode;
         }
@@ -150,6 +150,169 @@ else if (!string.IsNullOrWhiteSpace(error))
             return false;
         }
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clientId = await ClientIdService.GetClientIdAsync();
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                clientAllowed = false;
+                clientError = "Keine gültige ClientId vom lokalen Dienst erhalten.";
+            }
+            else
+            {
+                clientAllowed = true;
+
+                
+            }
+
+            if (clientAllowed)
+            {
+              //  Navigation.NavigateTo("/login");
+            }
+        }
+        catch (Exception ex)
+        {
+            clientAllowed = false;
+            clientError = "Lokaler Clientdienst ist nicht erreichbar: " + ex.Message;
+        }
+        finally
+        {
+            clientChecked = true;
+        }
+    }
+
+} *@
+
+@page "/counter"
+@rendermode InteractiveServer
+@using HelloSoapService.Services
+@inject HelloSoapService Service
+@inject HttpClient Http
+@inject ClientIdService ClientIdService
+
+<PageTitle>Nachricht an Azure schicken</PageTitle>
+
+<h1>Nachricht an Azure schicken</h1>
+
+@if (!clientChecked)
+{
+    <div class="alert alert-info">Lokaler Clientdienst wird geprüft...</div>
+}
+else if (!clientAllowed)
+{
+    <div class="alert alert-danger">
+        <h4>Zugriff nicht möglich</h4>
+        <p>@clientError</p>
+    </div>
+    return;
+}
+else
+{
+    <div class="alert alert-success">
+        ClientId erkannt: @clientId
+    </div>
+}
+
+<div class="mb-3">
+    <label class="form-label">CommandId</label>
+    <input class="form-control"
+           @bind="CommandId"
+           @bind:event="oninput"
+           placeholder="z.B. 9" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">StoredProcedureId</label>
+    <input class="form-control"
+           @bind="StoredProcedureId"
+           @bind:event="oninput"
+           placeholder="z.B. 00001" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">CommandText</label>
+    <input class="form-control"
+           @bind="CommandText"
+           @bind:event="oninput"
+           placeholder="z.B. GetAllPersons" />
+</div>
+
+<h4>Parameter</h4>
+
+@for (int i = 0; i < Parameters.Count; i++)
+{
+    int index = i;
+
+    <div class="row mb-2">
+        <div class="col">
+            <label class="form-label">Parameter @(index + 1) Name</label>
+            <input class="form-control"
+                   @bind="Parameters[index].Name"
+                   @bind:event="oninput" />
+        </div>
+
+        <div class="col">
+            <label class="form-label">Parameter @(index + 1) Value</label>
+            <input class="form-control"
+                   @bind="Parameters[index].Value"
+                   @bind:event="oninput" />
+        </div>
+    </div>
+}
+
+<button class="btn btn-primary"
+        @onclick="SendCommand"
+        disabled="@(!CanSend)">
+    Abschicken
+</button>
+
+@if (loading)
+{
+    <p>Lade Daten...</p>
+}
+else if (!string.IsNullOrWhiteSpace(message))
+{
+    <div class="alert alert-info mt-3">
+        <strong>Antwort:</strong>
+        <pre>@message</pre>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(error))
+{
+    <div class="alert alert-danger mt-3">
+        <strong>Fehler:</strong> @error
+    </div>
+}
+
+@code {
+    private string? clientId;
+    private bool clientChecked;
+    private bool clientAllowed;
+    private string? clientError;
+
+    private bool loading;
+    private string? message;
+    private string? error;
+
+    private string CommandId = "9";
+    private string StoredProcedureId = "00000";
+    private string CommandText = "Command_Unknown";
+
+    private List<ParameterInput> Parameters = new()
+    {
+        new(), new(), new(), new(), new(), new()
+    };
+
+    private bool CanSend =>
+        !loading &&
+        clientAllowed &&
+        IsNumeric(CommandId) &&
+        IsNumeric(StoredProcedureId) &&
+        !string.IsNullOrWhiteSpace(CommandText);
 
     protected override async Task OnInitializedAsync()
     {
@@ -178,4 +341,88 @@ else if (!string.IsNullOrWhiteSpace(error))
         }
     }
 
+    private async Task SendCommand()
+    {
+        try
+        {
+            loading = true;
+            message = null;
+            error = null;
+
+            bool internetOk = await CheckInternetAsync();
+            if (!internetOk)
+            {
+                error = "FEHLER: Keine Internetverbindung vorhanden.";
+                return;
+            }
+
+            bool azureOk = await CheckAzureAsync();
+            if (!azureOk)
+            {
+                error = "FEHLER: Azure Web-App ist nicht erreichbar.";
+                return;
+            }
+
+            var parameterList = Parameters
+                .Where(p => !string.IsNullOrWhiteSpace(p.Name) ||
+                            !string.IsNullOrWhiteSpace(p.Value))
+                .Select(p => (p.Name, p.Value))
+                .ToList();
+
+            message = await Service.SendCommandAsync(
+                clientId!,
+                CommandId,
+                StoredProcedureId,
+                CommandText,
+                parameterList);
+        }
+        catch (Exception ex)
+        {
+            error = "FEHLER: " + ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private static bool IsNumeric(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) &&
+               value.All(char.IsDigit);
+    }
+
+    private async Task<bool> CheckInternetAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var response = await Http.GetAsync("https://www.microsoft.com", cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task<bool> CheckAzureAsync()
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            using var response = await Http.GetAsync("https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/ping", cts.Token);
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private class ParameterInput
+    {
+        public string Name { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
 }

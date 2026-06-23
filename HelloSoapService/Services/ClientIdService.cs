@@ -13,8 +13,7 @@ public class ClientIdService
 
     public async Task<string?> GetClientIdAsync()
     {
-        var xml = await _httpClient.GetStringAsync(
-            "http://127.0.0.1:5055/clientid");
+        var xml = await _httpClient.GetStringAsync("http://127.0.0.1:5055/clientid");
 
         XDocument doc = XDocument.Parse(xml);
 

@@ -1,0 +1,118 @@
+﻿@page "/login"
+@rendermode InteractiveServer
+@using HelloSoapService.Services
+@inject ClientIdService ClientIdService
+
+<PageTitle>Login</PageTitle>
+
+<h1>Anmeldung</h1>
+
+@if (!clientChecked)
+{
+    <div class="alert alert-info">
+        Lokaler Clientdienst wird geprüft...
+    </div>
+}
+else if (clientAllowed)
+{
+    <div class="alert alert-success">
+        ✅ ClientId erkannt: @clientId
+    </div>
+}
+else
+{
+    <div class="alert alert-danger">
+        <h4>Zugriff nicht möglich</h4>
+        <p>@clientError</p>
+    </div>
+}
+
+<div class="mb-3">
+    <label class="form-label">Benutzername</label>
+
+    <input class="form-control"
+           @bind="UserName"
+           @bind:event="oninput"
+           placeholder="Benutzername eingeben" />
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Passwort</label>
+
+    <input type="password"
+           class="form-control"
+           @bind="Password"
+           @bind:event="oninput"
+           placeholder="Passwort eingeben" />
+</div>
+
+<button class="btn btn-primary"
+        @onclick="LoginClicked"
+        disabled="@(!CanLogin)">
+    Abschicken
+</button>
+
+@if (!string.IsNullOrWhiteSpace(StatusMessage))
+{
+    <div class="alert alert-info mt-3">
+        @StatusMessage
+    </div>
+}
+
+@code
+{
+    private string? clientId;
+    private bool clientChecked;
+    private bool clientAllowed;
+    private string? clientError;
+
+    private string UserName = "";
+    private string Password = "";
+    private string StatusMessage = "";
+
+    private bool CanLogin =>
+        clientChecked &&
+        clientAllowed &&
+        !string.IsNullOrWhiteSpace(UserName) &&
+        !string.IsNullOrWhiteSpace(Password);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clientId = await ClientIdService.GetClientIdAsync();
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                clientAllowed = false;
+                clientError = "Keine gültige ClientId vom lokalen Dienst erhalten.";
+            }
+            else
+            {
+                clientAllowed = true;
+                clientError = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            clientAllowed = false;
+            clientError = "Lokaler Clientdienst ist nicht erreichbar: " + ex.Message;
+        }
+        finally
+        {
+            clientChecked = true;
+        }
+    }
+
+    private void LoginClicked()
+    {
+        if (!CanLogin)
+        {
+            StatusMessage = "Anmeldung nicht möglich.";
+            return;
+        }
+
+        StatusMessage =
+            $"Benutzer: {UserName}, ClientId: {clientId}, Login wird später an Azure gesendet.";
+    }
+}
