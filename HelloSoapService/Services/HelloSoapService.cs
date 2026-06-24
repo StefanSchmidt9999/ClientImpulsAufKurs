@@ -120,7 +120,7 @@ public class HelloSoapService
         );
 
         var response = await _httpClient.PostAsync(
-            "https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/test",
+            "https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/",
             content
         );
 
