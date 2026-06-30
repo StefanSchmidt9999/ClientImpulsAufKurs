@@ -5,7 +5,6 @@ using System.Xml.Linq;
 
 namespace HelloSoapService.Services;
 
-
 public class HelloSoapService
 {
     private readonly HttpClient _httpClient;
@@ -84,12 +83,7 @@ public class HelloSoapService
         return "CLIENT-001";
     }
 
-    public async Task<string> SendCommandAsync(
-    string clientId,
-    string commandId,
-    string storedProcedureId,
-    string commandText,
-    List<(string Name, string Value)> parameters)
+    public async Task<string> SendCommandAsync(string clientId, string commandId, string storedProcedureId, string commandText, List<(string Name, string Value)> parameters)
     {
         string requestId = Guid.NewGuid().ToString();
 

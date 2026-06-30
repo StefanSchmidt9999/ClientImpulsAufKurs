@@ -1,40 +1,41 @@
 ﻿@page "/personen"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 @using HelloSoapService.Services
 @using System.Xml.Linq
+@using System.Text
 @inject HelloSoapService Service
-@inject ClientIdService ClientIdService
 
 <PageTitle>Personen</PageTitle>
 
 <h1>Personen</h1>
 
+<h1>Personen</h1>
+
+<button class="btn btn-primary mb-3"
+        @onclick="Refresh">
+    🔄 Aktualisieren
+</button>
+
 @if (!geladen)
 {
-    <div class="alert alert-info">
-        Anfrage an Azure Web-App läuft...
-    </div>
+    <div class="alert alert-info">Daten werden von Azure geladen...</div>
 }
 else if (!string.IsNullOrWhiteSpace(fehler))
 {
-    <div class="alert alert-danger">
-        @fehler
-    </div>
+    <div class="alert alert-danger">@fehler</div>
 }
 else if (personen.Count == 0)
 {
-    <div class="alert alert-warning">
-        Keine Personen-Antwort vorhanden.
-    </div>
+    <div class="alert alert-warning">Keine Personendaten vorhanden.</div>
 }
 else
 {
     <table class="table table-striped">
         <thead>
             <tr>
-                <th>FirstName</th>
-                <th>MiddleName</th>
-                <th>LastName</th>
+                <th>Vorname</th>
+                <th>Mittelname</th>
+                <th>Nachname</th>
             </tr>
         </thead>
         <tbody>
@@ -50,35 +51,97 @@ else
     </table>
 }
 
-@code {
+@code 
+{
     private bool geladen;
     private string? fehler;
-    private string? clientId;
-
+    private bool ladevorgangGestartet;
     private List<PersonRow> personen = new();
 
     protected override async Task OnInitializedAsync()
     {
+        await LadePersonenAsync();
+    }
+
+    private class PersonRow
+    {
+        public string FirstName { get; set; } = "";
+        public string MiddleName { get; set; } = "";
+        public string LastName { get; set; } = "";
+    }
+
+    private static string HexToUnicodeString(string hex)
+    {
+        hex = hex.Trim();
+
+        byte[] bytes = new byte[hex.Length / 2];
+
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+        }
+
+        return Encoding.Unicode.GetString(bytes);
+    }
+
+    private static string HexToUtf8String(string hex)
+    {
+        hex = hex.Trim();
+
+        byte[] bytes = new byte[hex.Length / 2];
+
+        for (int i = 0; i < bytes.Length; i++)
+        {
+            bytes[i] = Convert.ToByte(hex.Substring(i * 2, 2), 16);
+        }
+
+        return Encoding.UTF8.GetString(bytes);
+    }
+
+    private async Task Refresh()
+    {
+        ladevorgangGestartet = false;
+        geladen = false;
+        await LadePersonenAsync();
+    }
+
+    private async Task LadePersonenAsync()
+    {
         try
         {
-            clientId = await ClientIdService.GetClientIdAsync();
-
-            if (string.IsNullOrWhiteSpace(clientId))
+            if (ladevorgangGestartet)
             {
-                fehler = "Keine gültige ClientId vom lokalen Dienst erhalten.";
                 return;
             }
+
+            ladevorgangGestartet = true;
 
             string? xml = await Service.GetResponseAsync();
 
             if (string.IsNullOrWhiteSpace(xml))
             {
+                geladen = true;
                 return;
             }
 
-            XDocument doc = XDocument.Parse(xml);
 
-            personen = doc.Descendants("Person")
+            // XDocument responseDoc = XDocument.Parse(xml);
+            XDocument responseDoc = XDocument.Parse(xml);
+
+            // string? hexData = responseDoc.Descendants("Data").FirstOrDefault()?.Value;
+
+            // if (responseDoc.IsNullOrWhiteSpace(xml))
+            // {
+            //     fehler = "Keine Data-Daten in der Antwort gefunden.";
+            //     return;
+            // }
+
+            // string personsXml = HexToUnicodeString(hexData);
+            // string personsXml = HexToUtf8String(hexData);
+
+            // XDocument personsDoc = XDocument.Parse(personsXml);
+
+            personen = responseDoc.Descendants("Person")
                 .Select(x => new PersonRow
                 {
                     FirstName = x.Element("FirstName")?.Value ?? "",
@@ -89,18 +152,12 @@ else
         }
         catch (Exception ex)
         {
-            fehler = "Fehler: " + ex.Message;
+            fehler = "Fehler beim Laden: " + ex.Message;
         }
         finally
         {
             geladen = true;
         }
     }
-
-    private class PersonRow
-    {
-        public string FirstName { get; set; } = "";
-        public string MiddleName { get; set; } = "";
-        public string LastName { get; set; } = "";
     }
 }

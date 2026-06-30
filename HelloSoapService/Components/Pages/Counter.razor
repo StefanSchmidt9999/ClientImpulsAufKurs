@@ -176,10 +176,12 @@ else if (!string.IsNullOrWhiteSpace(error))
             }
 
             var parameterList = Parameters
-                .Where(p => !string.IsNullOrWhiteSpace(p.Name) ||
-                            !string.IsNullOrWhiteSpace(p.Value))
-                .Select(p => (p.Name, p.Value))
-                .ToList();
+    .               Where(p => !string.IsNullOrWhiteSpace(p.Value))
+                    .Select((p, index) => (
+                        Name: $"Parameter{index + 1:000}",
+                    Value: p.Value
+                ))
+            .ToList();
 
             message = await Service.SendCommandAsync(
                 clientId!,
