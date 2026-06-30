@@ -1,0 +1,106 @@
+﻿@page "/personen"
+@rendermode InteractiveServer
+@using HelloSoapService.Services
+@using System.Xml.Linq
+@inject HelloSoapService Service
+@inject ClientIdService ClientIdService
+
+<PageTitle>Personen</PageTitle>
+
+<h1>Personen</h1>
+
+@if (!geladen)
+{
+    <div class="alert alert-info">
+        Anfrage an Azure Web-App läuft...
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(fehler))
+{
+    <div class="alert alert-danger">
+        @fehler
+    </div>
+}
+else if (personen.Count == 0)
+{
+    <div class="alert alert-warning">
+        Keine Personen-Antwort vorhanden.
+    </div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>FirstName</th>
+                <th>MiddleName</th>
+                <th>LastName</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in personen)
+            {
+                <tr>
+                    <td>@p.FirstName</td>
+                    <td>@p.MiddleName</td>
+                    <td>@p.LastName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private bool geladen;
+    private string? fehler;
+    private string? clientId;
+
+    private List<PersonRow> personen = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            clientId = await ClientIdService.GetClientIdAsync();
+
+            if (string.IsNullOrWhiteSpace(clientId))
+            {
+                fehler = "Keine gültige ClientId vom lokalen Dienst erhalten.";
+                return;
+            }
+
+            string? xml = await Service.GetResponseAsync();
+
+            if (string.IsNullOrWhiteSpace(xml))
+            {
+                return;
+            }
+
+            XDocument doc = XDocument.Parse(xml);
+
+            personen = doc.Descendants("Person")
+                .Select(x => new PersonRow
+                {
+                    FirstName = x.Element("FirstName")?.Value ?? "",
+                    MiddleName = x.Element("MiddleName")?.Value ?? "",
+                    LastName = x.Element("LastName")?.Value ?? ""
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            fehler = "Fehler: " + ex.Message;
+        }
+        finally
+        {
+            geladen = true;
+        }
+    }
+
+    private class PersonRow
+    {
+        public string FirstName { get; set; } = "";
+        public string MiddleName { get; set; } = "";
+        public string LastName { get; set; } = "";
+    }
+}

@@ -5,10 +5,22 @@ using System.Xml.Linq;
 
 namespace HelloSoapService.Services;
 
+
 public class HelloSoapService
 {
     private readonly HttpClient _httpClient;
 
+    public async Task<string?> GetResponseAsync()
+    {
+        var response = await _httpClient.GetAsync("https://mysoapapp-eqdtckhxd0enegft.canadacentral-01.azurewebsites.net/api/hello/response");
+
+        if (response.StatusCode == System.Net.HttpStatusCode.NoContent)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadAsStringAsync();
+    }
     public HelloSoapService(HttpClient httpClient)
     {
         _httpClient = httpClient;

@@ -6,6 +6,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Blazor Standard
 builder.Services.AddRazorComponents()
+
     .AddInteractiveServerComponents();
 
 // HttpClient + SOAP Service
